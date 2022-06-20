@@ -24,8 +24,7 @@ from PyQt5.QtWidgets import QWidget, QMainWindow, QApplication
 
 
 def get_main_window() -> QWidget or None:
-    app: [QApplication] = QApplication.instance()
-    for widget in app.topLevelWidgets():
+    for widget in QApplication.instance().topLevelWidgets():
         if isinstance(widget, QMainWindow):
             return widget
     return None

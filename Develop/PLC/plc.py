@@ -25,6 +25,9 @@ from Drivers.PyQt_activity import BaseActivity
 
 # upper most level PLC object
 class PLC(BaseActivity):
+    def gui_class(self):
+        return None
+
     def __init__(self, gui_ref, queue_ref):
         super().__init__(gui_ref, queue_ref)
 
@@ -47,6 +50,15 @@ class PLC(BaseActivity):
     @property
     def tags(self):
         return self._tags
+
+    def __run__(self, message):
+        match message:
+            case 1:
+                pass
+            case 2:
+                pass
+            case 3:
+                pass
 
 
 class AlphaDataType(object):

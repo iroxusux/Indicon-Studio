@@ -279,11 +279,6 @@ class IndiconStudio(object):
         _engine_thread.start()
         app.exec_()
 
-    # Any debug functions can be called here which occurs before the main program loop
-    @staticmethod
-    def __debug_func__():
-        pass
-
     def __program_loop__(self, _window, _queue):
         while not self._exit:
             message = None
@@ -310,7 +305,7 @@ class IndiconStudio(object):
 
     @staticmethod
     def __generic_activity_launch__(_window, activity):
-        g, q = activity.GUI_REF, queue.Queue()
+        g, q = activity.gui_class, queue.Queue()
         _window.insert_interface_to_stack(g, q)
         return activity(g, q)
 

@@ -8,6 +8,7 @@
 # System Module Imports
 ##################################################
 from abc import abstractmethod
+from enum import Enum
 import queue
 from threading import Thread
 ##################################################
@@ -27,6 +28,12 @@ from PyQt5 import QtWidgets
 ##################################################
 
 
+class BaseMessages(Enum):  # any custom messages must be below "10,000" - System reservations start at 10,000 ...
+    # note, underscores don't affect processor readability, use them for large numbers for ease of programming
+    SYSTEM_RESERVED = 10_000
+    KILL_PROCESS = 10_001
+
+
 class BaseActivityWindow(QtWidgets.QWidget):
     def __init__(self,
                  queue_ref: queue.Queue,
@@ -34,6 +41,7 @@ class BaseActivityWindow(QtWidgets.QWidget):
         super().__init__(parent)
         self._parent = parent
         self._queue_ref = queue_ref
+        self.setWindowTitle(self.__class__.__name__)
         self.__setup_layout__()
 
     @abstractmethod
@@ -57,7 +65,7 @@ class BaseActivityWindow(QtWidgets.QWidget):
 
 class BaseActivity(object):
     @abstractmethod
-    def GUI_REF(self):  # over-write this with any inherited class. This is a reference to the TYPE of accompanying window
+    def gui_class(self):  # over-write this with any inherited class. This is a reference to the TYPE of accompanying window
         return BaseActivityWindow
 
     def __init__(self, gui_ref: QtWidgets, queue_ref: queue.Queue):
@@ -69,7 +77,7 @@ class BaseActivity(object):
         self._queue_ref = queue_ref
 
         # main loop thread
-        self._main_loop_thread = Thread(target=self.__run__, args=(), daemon=True)
+        self._main_loop_thread = Thread(target=self.__system_loop__, args=(), daemon=True)
         self._main_loop_thread.start()
 
     @property
@@ -80,18 +88,31 @@ class BaseActivity(object):
     def queue_ref(self):
         return self._queue_ref
 
-    @abstractmethod
-    def __run__(self):
+    def __system_loop__(self):  # internal loop, do not override in inherited classes, use __run__
         while not self._exit:
             messages = None
             try:
                 messages = self._queue_ref.get(timeout=0.1)
                 match messages:
-                    case 1:
-                        pass
-                    case 2:
-                        pass
-                    case 3:
-                        pass
+                    case BaseMessages.KILL_PROCESS:
+                        self.shutdown()
+                        continue
+                self.__run__(messages)
             except queue.Empty:
+                continue
+
+    @abstractmethod
+    def __run__(self, message):
+        match message:
+            case 1:
                 pass
+            case 2:
+                pass
+            case 3:
+                pass
+
+    def shutdown(self):  # shut down our activity safely
+        self._exit = True  # set our bit to shut down
+        while self._main_loop_thread.isAlive():  # wait while the thread is still alive
+            continue  # stay in loop
+        return True  # return True on successful shutdown

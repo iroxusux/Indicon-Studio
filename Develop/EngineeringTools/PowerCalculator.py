@@ -85,26 +85,20 @@ class PowerCalculatorWindow(BaseActivityWindow):
 
 
 class PowerCalculator(BaseActivity):
-    GUI_REF = PowerCalculatorWindow
+    gui_class = PowerCalculatorWindow
 
     def __init__(self, gui_ref, queue_ref):
         super().__init__(gui_ref, queue_ref)
 
-    def __run__(self):
-        while not self._exit:
-            messages = None
-            try:
-                messages = self._queue_ref.get(timeout=0.1)
-                match messages:
-                    case Messages.EXAMPLE_MESSAGE:
-                        print('you made it to me! This is a different thread than the GUI!')
-                        print(f'btw, my class is {self.__class__.__name__}!')
-                    case 1:
-                        pass
-                    case 2:
-                        pass
-                    case 3:
-                        pass
-            except queue.Empty:
+    def __run__(self, message):
+        match message:
+            case Messages.EXAMPLE_MESSAGE:
+                print('you made it to me! This is a different thread than the GUI!')
+                print(f'btw, my class is {self.__class__.__name__}!')
+            case 1:
+                pass
+            case 2:
+                pass
+            case 3:
                 pass
 

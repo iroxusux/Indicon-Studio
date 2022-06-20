@@ -201,25 +201,19 @@ class RockwellProcessor(PLC):
         'task_failure': 17,
     }
 
-    GUI_REF = RockwellProcessorWindow
+    gui_class = RockwellProcessorWindow
 
     def __init__(self, gui_ref, queue_ref):
         super().__init__(gui_ref, queue_ref)
 
-    def __run__(self):
-        while not self._exit:
-            message = None
-            try:
-                message = self._queue_ref.get(timeout=0.1)
-                match message:
-                    case RockwellMessages.UI_LOADED:
-                        print('yeah i get it')
-                    case RockwellMessages.IMPORT_L5K:
-                        self.__import_from_L5K__()
-                    case RockwellMessages.IMPORT_L5X:
-                        self.__import_from_L5X__()
-            except queue.Empty:
-                pass
+    def __run__(self, message):
+        match message:
+            case RockwellMessages.UI_LOADED:
+                print('yeah i get it')
+            case RockwellMessages.IMPORT_L5K:
+                self.__import_from_L5K__()
+            case RockwellMessages.IMPORT_L5X:
+                self.__import_from_L5X__()
 
     def __import_from_L5K__(self):  # this is a less efficient way to grab a processor, L5X is recommended
         # # # GENERICS # # #
