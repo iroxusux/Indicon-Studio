@@ -12,6 +12,7 @@ import queue
 ##################################################
 from Drivers.file_manager import read_file
 from Drivers.string_funcs import get_string_from_stream, get_list_from_stream, complex_clear, find_coords, find_variable_ending
+from Drivers.PyQt_activity import BaseActivityWindow
 from PyQt5 import QtWidgets
 from Qt.Objects.ContextualTree import ContextualTree
 from Qt.UiFunctions.open import get_file_with_dialogue
@@ -43,14 +44,12 @@ class RockwellFileType(Enum):
 
 
 # processor window GUI
-class RockwellProcessorWindow(QtWidgets.QWidget):
+class RockwellProcessorWindow(BaseActivityWindow):
     def __init__(self,
                  queue_ref: [queue.Queue],
                  parent=None):
-        super().__init__(parent)
-        self._parent = parent
-        self._queue = queue_ref
-        self.__setup_layout__()
+        super().__init__(queue_ref=queue_ref,
+                         parent=parent)
 
     def __setup_layout__(self):
         # setup individual items first
@@ -212,7 +211,6 @@ class RockwellProcessor(PLC):
             message = None
             try:
                 message = self._queue_ref.get(timeout=0.1)
-                print(message)
                 match message:
                     case RockwellMessages.UI_LOADED:
                         print('yeah i get it')

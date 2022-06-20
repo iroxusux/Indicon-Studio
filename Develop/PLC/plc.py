@@ -5,13 +5,11 @@
 ##################################################
 # System Module Imports
 ##################################################
-from abc import abstractmethod
-import queue
-from threading import Thread
+
 ##################################################
 # Add-In Module Imports
 ##################################################
-
+from Drivers.PyQt_activity import BaseActivity
 ##################################################
 # Local Module Imports
 ##################################################
@@ -26,14 +24,9 @@ from threading import Thread
 
 
 # upper most level PLC object
-class PLC(object):
+class PLC(BaseActivity):
     def __init__(self, gui_ref, queue_ref):
-        # generics
-        self._exit = False
-
-        # model / view setup
-        self._gui_ref = gui_ref  # view
-        self._queue_ref = queue_ref  # model ( reference of communications between the 2)
+        super().__init__(gui_ref, queue_ref)
 
         # plc info
         self._name = ''
@@ -42,18 +35,6 @@ class PLC(object):
         self._module_templates = []  # module templates inherited by Rockwell Binaries
         self._modules = []  # actual modules
         self._tags = []  # tags (?)
-
-        # create thread to communicate between GUI and this PLC thread
-        self._engine_thread = Thread(target=self.__run__, args=(), daemon=True)
-        self._engine_thread.start()
-
-    @property
-    def gui_ref(self):
-        return self._gui_ref
-
-    @property
-    def queue_ref(self):
-        return self._queue_ref
 
     @property
     def data_types(self):
@@ -66,26 +47,6 @@ class PLC(object):
     @property
     def tags(self):
         return self._tags
-
-    @abstractmethod
-    def __run__(self):
-        while not self._exit:
-            messages = None
-            try:
-                messages = self._queue_ref.get(timeout=0.1)
-                match messages:
-                    case 1:
-                        pass
-                    case 2:
-                        pass
-                    case 3:
-                        pass
-            except queue.Empty:
-                pass
-
-    @abstractmethod
-    def compile_from_path(self, path: str):
-        pass
 
 
 class AlphaDataType(object):

@@ -13,6 +13,7 @@ from threading import Thread
 ##################################################
 # Add-In Module Imports
 ##################################################
+from EngineeringTools.PowerCalculator import PowerCalculator
 from PyQt5 import QtWidgets, QtCore, QtGui
 ##################################################
 # Local Module Imports
@@ -32,6 +33,7 @@ STUDIO_VERSION = 'v1.00.00'
 class Messages(Enum):
     IMPORT_L5K = 1
     IMPORT_L5X = 2
+    CALC_CONFIG = 3
 
 
 class StudioMainWindowForm(QtWidgets.QMainWindow):
@@ -100,6 +102,8 @@ class StudioMainWindowForm(QtWidgets.QMainWindow):
         # sub functions menu GM CONTROLS
         functions_menu_gm_controls = self._tools_menu.addMenu("&GM Controls")
         # GM Eplan and logix creator tools
+        calc_config_action = QtWidgets.QAction("Config Calculator", parent=functions_menu_gm_controls)
+        calc_config_action.triggered.connect(lambda: self._queue.put(Messages.CALC_CONFIG))
         calc_to_eplan_action = QtWidgets.QAction("Calc2EPlan", parent=functions_menu_gm_controls)
         calc_to_eplan_action.triggered.connect(self.__debug_method__)
         calc_to_logix_action = QtWidgets.QAction("Calc2Logix", parent=functions_menu_gm_controls)
@@ -107,6 +111,7 @@ class StudioMainWindowForm(QtWidgets.QMainWindow):
         calc_full_build_action = QtWidgets.QAction("Calc Full Build", parent=functions_menu_gm_controls)
         calc_full_build_action.triggered.connect(self.__debug_method__)
         # final hooks
+        functions_menu_gm_controls.addAction(calc_config_action)
         functions_menu_gm_controls.addAction(calc_to_eplan_action)
         functions_menu_gm_controls.addAction(calc_to_logix_action)
         functions_menu_gm_controls.addAction(calc_full_build_action)
@@ -287,21 +292,27 @@ class IndiconStudio(object):
                 match message:
 
                     case Messages.IMPORT_L5K:  # import an L5K into a logical processor
-                        g, q = RockwellProcessor.GUI_REF, queue.Queue()  # set up g (gui ref) and q (communication queue)
-                        _window.insert_interface_to_stack(g, q)  # request our window to insert a new window into it's stack
-                        activity = RockwellProcessor(g, q)  # create instance of activity with built gui & queue
+                        activity = self.__generic_activity_launch__(_window, RockwellProcessor)
                         activity.queue_ref.put(RockwellMessages.IMPORT_L5K)  # cast our command to our new object
                         self._activities.append(activity)  # create and append to memory stack (protect from garbage collection)
 
                     case Messages.IMPORT_L5X:  # import an L5X into a logical processor
-                        g, q = RockwellProcessor.GUI_REF, queue.Queue()  # set up g (gui ref) and q (communication queue)
-                        _window.insert_interface_to_stack(g, q)  # request our window to insert a new window into it's stack
-                        activity = RockwellProcessor(g, q)  # create instance of activity with built gui & queue
+                        activity = self.__generic_activity_launch__(_window, RockwellProcessor)
                         activity.queue_ref.put(RockwellMessages.IMPORT_L5X)  # cast our command to our new object
                         self._activities.append(activity)  # create and append to memory stack (protect from garbage collection)
 
+                    case Messages.CALC_CONFIG:  # configure a power calculator ( -> Excel Workbook)
+                        activity = self.__generic_activity_launch__(_window, PowerCalculator)
+                        self._activities.append(activity)
+
             except queue.Empty:
                 pass
+
+    @staticmethod
+    def __generic_activity_launch__(_window, activity):
+        g, q = activity.GUI_REF, queue.Queue()
+        _window.insert_interface_to_stack(g, q)
+        return activity(g, q)
 
 
 # exit program
