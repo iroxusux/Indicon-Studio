@@ -34,7 +34,8 @@ class PLC(BaseActivity):
         # plc info
         self._name = ''
         self._ip_address = f'{0}.{0}.{0}.{0}'  # placeholder IP, but constructor shows formatting
-        self._data_types = []  # all pre-defined & user-defined types
+        self._data_types = [BOOL(), BIT(), SINT(), INT(), DINT(), REAL(), LINT()]
+        self._user_data_types = []  # all pre-defined & user-defined types
         self._module_templates = []  # module templates inherited by Rockwell Binaries
         self._modules = []  # actual modules
         self._tags = []  # tags (?)
@@ -42,6 +43,10 @@ class PLC(BaseActivity):
     @property
     def data_types(self):
         return self._data_types
+
+    @property
+    def user_data_types(self):
+        return self._user_data_types
 
     @property
     def modules(self):
@@ -61,14 +66,18 @@ class PLC(BaseActivity):
                 pass
 
 
-class AlphaDataType(object):
+class AtomicDataType(object):
     class_hi = 1
     class_lo = -1
 
     def __init__(self, size: int = 1, val: float = 0, signed=True):
         self._size = size
         self._signed = signed
-        self._value = self.value(val)
+        self._value = val
+
+    @property
+    def name(self):
+        return self.__class__.__name__
 
     @property
     def size(self):
@@ -95,7 +104,20 @@ class AlphaDataType(object):
         return cls.class_lo
 
 
-class SINT(AlphaDataType):
+class BOOL(AtomicDataType):
+    class_hi = 1
+    class_lo = 0
+
+    def __init__(self, val=0):
+        super().__init__(1, val)
+
+
+class BIT(BOOL):
+    def __init__(self, val=0):
+        super().__init__(val)
+
+
+class SINT(AtomicDataType):
     class_hi = 127
     class_lo = -128
 
@@ -103,7 +125,7 @@ class SINT(AlphaDataType):
         super().__init__(1, val)
 
 
-class INT(AlphaDataType):
+class INT(AtomicDataType):
     class_hi = 32767
     class_lo = -32768
 
@@ -111,7 +133,7 @@ class INT(AlphaDataType):
         super().__init__(2, val)
 
 
-class DINT(AlphaDataType):
+class DINT(AtomicDataType):
     class_hi = 2147483647
     class_lo = -2147483648
 
@@ -119,7 +141,7 @@ class DINT(AlphaDataType):
         super().__init__(4, val)
 
 
-class REAL(AlphaDataType):
+class REAL(AtomicDataType):
     class_hi = 2147483647.99999999
     class_lo = -2147483648.99999999
 
@@ -127,7 +149,7 @@ class REAL(AlphaDataType):
         super().__init__(8, 0.0)
 
 
-class LINT(AlphaDataType):
+class LINT(AtomicDataType):
     class_hi = 9223372036854775807
     class_lo = -9223372036854775808
 

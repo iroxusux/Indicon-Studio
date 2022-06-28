@@ -5,12 +5,15 @@
 ##################################################
 # System Module Imports
 ##################################################
+from dataclasses import dataclass
 from enum import Enum
 import queue
 ##################################################
 # Add-In Module Imports
 ##################################################
 from Drivers.file_manager import read_file
+from Drivers.list_funcs import find
+from Drivers.object_manager import copy_instance
 from Drivers.string_funcs import get_string_from_stream, get_list_from_stream, complex_clear, find_coords, find_variable_ending
 from Drivers.PyQt_activity import BaseActivityWindow
 from PyQt5 import QtWidgets
@@ -32,15 +35,34 @@ from PLC.plc import PLC
 # enum class to communicate efficiently between gui and "engine"
 class RockwellMessages(Enum):
     UI_LOADED = 1
-    IMPORT_L5K = 2
     IMPORT_L5X = 3
     CONNECT_TO_PLC = 10
 
 
 # enum class for Rockwell File Decompression Type
 class RockwellFileType(Enum):
-    L5K = 1
     L5X = 2
+
+
+# Rockwell specific data type class
+class DataType:
+    name = ''
+    family = ''
+    description = ''
+    udt_class = ''
+    members = []
+
+
+# Dataclass for complex data types to allow easy-to-read deconstruction of typing as the file is decompressed
+@dataclass
+class DataTypeMember:
+    name = None
+    data_type = None
+    dimension = None
+    radix = None
+    hidden = False
+    ext_access = None
+    description = ''
 
 
 # processor window GUI
@@ -154,20 +176,14 @@ class RockwellProcessorWindow(BaseActivityWindow):
 
 # rockwell type PLC handling
 class RockwellProcessor(PLC):
-    L5K_FILE_TYPE = '.L5K(*.L5K)'
     L5X_FILE_TYPE = '.L5X(*.L5X)'
 
-    L5K_KWORDS = {
-        'controller': ['CONTROLLER', 'END_CONTROLLER'],
-        'comm_path': ['CommPath := ', '",'],
-        'data_type': ['DATATYPE', 'END_DATATYPE'],
-        'description': 'Description := ',
-        'family': 'FamilyType := ',
-        'header': ['(', ')', ',']
-    }
+    PRE_DEFINED_TYPE_PATH = 'PLC/L5X Files/raPreDefinedDataTypes.L5X'
 
     L5X_KWORDS = {
         'add_on_instructions': ('<AddOnInstructionDefinitions>', '</AddOnInstructionDefinitions>'),
+        'content_header': ('<RSLogix5000Content', '\n'),
+        'controller': ('<Controller ', '>'),
         'data_type': ('<DataType ', '</DataType>'),
         'data_types': ('<DataTypes>', '</DataTypes>'),
         'description': ('<Description>', '</Description>'),
@@ -182,15 +198,16 @@ class RockwellProcessor(PLC):
         'module': ('<Module ', '</Module>'),
         'modules': ('<Modules>', '</Modules'),
         'name': ('Name="', '"'),
+        'processor_type': ('ProcessorType="', '" '),
         'programs': ('<Programs>', '</Programs>'),
         'radix': ('Radix="', '"'),
+        'sw_major': ('MajorRev="', '" '),
+        'sw_minor': ('MinorRev="', '" '),
         'tags': ('<Tags>', '</Tags>'),
+        'target_type': ('TargetType="', '" '),
         'tasks': ('<Tasks>', '</Tasks>'),
         'udt_class': ('Class="', '"'),
     }
-
-    ATTR_BEGIN = 0
-    ATTR_END = 1
 
     EXIT_CODES = {
         'data_type_failure': 12,
@@ -203,115 +220,143 @@ class RockwellProcessor(PLC):
 
     gui_class = RockwellProcessorWindow
 
+    class ExtractionType(Enum):
+        Controller = 1
+        Program = 2
+
     def __init__(self, gui_ref, queue_ref):
         super().__init__(gui_ref, queue_ref)
+        self.data_types.extend(self.__compile_data_type_stream__(read_file(self.PRE_DEFINED_TYPE_PATH)))  # get pre defined data types before decompiling or creating anything
+        self._hw_type = ''
+        self._maj_sw_rev = 0
+        self._minor_sw_rev = 0
 
     def __run__(self, message):
         match message:
-            case RockwellMessages.UI_LOADED:
-                print('yeah i get it')
-            case RockwellMessages.IMPORT_L5K:
-                self.__import_from_L5K__()
             case RockwellMessages.IMPORT_L5X:
                 self.__import_from_L5X__()
 
-    def __import_from_L5K__(self):  # this is a less efficient way to grab a processor, L5X is recommended
+    def __import_from_L5X__(self):
         # # # GENERICS # # #
-        path = get_file_with_dialogue('HOME', self.L5K_FILE_TYPE)  # get path
+        path = get_file_with_dialogue('HOME', self.L5X_FILE_TYPE)  # get path
         if not path:  # do not continue without path
             return
-        raw_file = read_file(path)  # read file from path
-        valid = get_list_from_stream(self.L5K_KWORDS['controller'][0], self.L5K_KWORDS['controller'][1], raw_file)
-        if not valid:  # do not continue if file is not valid
+        stream = read_file(path)
+        contents_header = get_string_from_stream(begin=self.L5X_KWORDS['content_header'][0], end=self.L5X_KWORDS['content_header'][1], stream=stream)  # get header from L5X file (if it exists, that is)
+        if not contents_header:  # do not continue without finding header
             return
-        self._name = get_string_from_stream(self.L5K_KWORDS['controller'][0], '(', raw_file, trim_start=True, trim_end=True)
-        if not self._name:  # do not continue without a name (file must be invalid, it seems)
+        target_type = get_string_from_stream(begin=self.L5X_KWORDS['target_type'][0], end=self.L5X_KWORDS['target_type'][1], stream=contents_header, trim_start=True, trim_end=True)
+        if not target_type:  # do not continue without a known target type
             return
-        self._ip_address = get_string_from_stream(self.L5K_KWORDS['comm_path'][0], self.L5K_KWORDS['comm_path'][1], raw_file, trim_start=True, trim_end=True).split('\\')[1]
+        match target_type:
+            case 'Controller':
+                self.__extract_controller__(stream)
+                return
+            case 'Program':
+                print('i found a program!')
+                return
+            case _:  # default argument
+                print('i found nothing!')
+                return
         # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
         # # # DATA TYPE # # #
-        self._data_types = [self.__decompress_data_type__(RockwellFileType.L5K, stream) for stream in get_list_from_stream(self.L5K_KWORDS['data_type'][0], self.L5K_KWORDS['data_type'][1], raw_file, trim_start=True, trim_end=True)]
+
         # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    def __import_from_L5X__(self):
-        print('not here yet, bud')
-        return
+    def __extract_controller__(self, stream):
+        # # # CONTROLLER INFO # # #
+        controller_info = get_string_from_stream(begin=self.L5X_KWORDS['controller'][0], end=self.L5X_KWORDS['controller'][1], stream=stream)  # get header
+        self._name = get_string_from_stream(begin=self.L5X_KWORDS['name'][0], end=self.L5X_KWORDS['name'][1], stream=controller_info, trim_start=True, trim_end=True)  # find name
+        self._hw_type = get_string_from_stream(begin=self.L5X_KWORDS['processor_type'][0], end=self.L5X_KWORDS['processor_type'][1], stream=controller_info, trim_start=True, trim_end=True)  # find processor hardware type
+        self._maj_sw_rev = int(get_string_from_stream(begin=self.L5X_KWORDS['sw_major'][0], end=self.L5X_KWORDS['sw_major'][1], stream=controller_info, trim_start=True, trim_end=True))  # find processor software major revision
+        self._min_sw_rev = int(get_string_from_stream(begin=self.L5X_KWORDS['sw_minor'][0], end=self.L5X_KWORDS['sw_minor'][1], stream=controller_info, trim_start=True, trim_end=True))  # find processor software minor revision
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    def __decompress_data_type__(self, file_type: [RockwellFileType], stream: str):
-        data_type = RockwellProcessor.DataType()
-        match file_type:
-            case RockwellFileType.L5K:  # decompress data type from L5K
+        # # # USER DATA TYPES # # #
+        self._user_data_types.extend(udt for udt in self.__compile_data_type_stream__(stream))
+        print('waiting')
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-                # clear out white spaces, tabs, new line
-                local_stream = complex_clear(stream, self.L5K_KWORDS['data_type'][1], self.L5K_KWORDS['data_type'][0], tabs=True, new_line=True)
+    def __compile_data_type_stream__(self, udt_stream: str):
+        udt_list = [self.__decompress_data_type__(s) for s in get_list_from_stream(begin=self.L5X_KWORDS['data_type'][0], end=self.L5X_KWORDS['data_type'][1], stream=udt_stream, trim_start=True, trim_end=True)]
+        return self.__bind_members__(udt_list)
 
-                # Separate Header Onto Single Line For Ease Of Parsing
-                header_coords = find_coords(self.L5K_KWORDS['header'][0], self.L5K_KWORDS['header'][1], local_stream)
-                if not header_coords:  # if the header cannot be found, the data must be corrupted or improper
-                    return None
+    def __decompress_data_type__(self, stream: str) -> DataType or None:
+        # get information from stream
+        name = get_string_from_stream(begin=self.L5X_KWORDS['name'][0], end=self.L5X_KWORDS['name'][1], stream=stream, trim_start=True, trim_end=True)
+        family = get_string_from_stream(begin=self.L5X_KWORDS['family'][0], end=self.L5X_KWORDS['family'][1], stream=stream, trim_start=True, trim_end=True)
+        udt_class = get_string_from_stream(begin=self.L5X_KWORDS['udt_class'][0], end=self.L5X_KWORDS['udt_class'][1], stream=stream, trim_start=True, trim_end=True)
+        description = get_string_from_stream(begin=self.L5X_KWORDS['description'][0], end=self.L5X_KWORDS['description'][1], stream=stream, trim_start=True, trim_end=True)
+        members = [self.__get_data_type_members__(stream) for stream in get_list_from_stream(begin=self.L5X_KWORDS['member'][0], end=self.L5X_KWORDS['member'][1], stream=stream, trim_start=True, trim_end=True)]
 
-                local_stream = local_stream[:header_coords[1]] + '\n' + local_stream[header_coords[1]:]
-                header_stream, child_stream = local_stream.split('\n')  # With the stream formatted properly, split into 2 instances (Header and Child)
+        if not name:  # if no name is found, return None
+            return None
 
-                # Search For Name
-                name_index = header_stream.find(' ')
-                if name_index == -1:
-                    return None  # Cannot continue without a proper named to assign
-                data_type.name = header_stream[:name_index]
+        # create new data type
+        data_type = DataType()
+        data_type.name = name
+        data_type.family = family if family else None
+        data_type.udt_class = udt_class if udt_class else None
+        data_type.description = description if description else None
+        data_type.members = members
 
-                # attempt to find hidden flag in name - although, i don't think data-types have this...
-                hidden_find = data_type.name.find('ZZZZZZZZZZ')
-                hidden = True if hidden_find != -1 else False
+        return data_type
 
-                # Search For Description
-                data_type.description = find_variable_ending(header_stream, self.L5K_KWORDS['description'], self.L5K_KWORDS['header'][2], self.L5K_KWORDS['header'][1], trim_start=True, trim_end=True)
+    def __get_data_type_members__(self, stream) -> [DataTypeMember]:
 
-                # Search For Family
-                data_type.family = find_variable_ending(header_stream, self.L5K_KWORDS['family'], self.L5K_KWORDS['header'][2], self.L5K_KWORDS['header'][1], trim_start=True, trim_end=True)
+        name = get_string_from_stream(begin=self.L5X_KWORDS['name'][0], end=self.L5X_KWORDS['name'][1], stream=stream, trim_start=True, trim_end=True)
+        data_type = get_string_from_stream(begin=self.L5X_KWORDS['member_data_type'][0], end=self.L5X_KWORDS['member_data_type'][1], stream=stream, trim_start=True, trim_end=True)
+        array_found = get_string_from_stream(begin='[', end=']', stream=data_type, trim_start=True, trim_end=True)
+        dimension = get_string_from_stream(begin=self.L5X_KWORDS['dimension'][0], end=self.L5X_KWORDS['dimension'][1], stream=stream, trim_start=True, trim_end=True)
+        radix = get_string_from_stream(begin=self.L5X_KWORDS['radix'][0], end=self.L5X_KWORDS['radix'][1], stream=stream, trim_start=True, trim_end=True)
+        hidden = get_string_from_stream(begin=self.L5X_KWORDS['hidden'][0], end=self.L5X_KWORDS['hidden'][1], stream=stream, trim_start=True, trim_end=True)
+        ext_access = get_string_from_stream(begin=self.L5X_KWORDS['external_access'][0], end=self.L5X_KWORDS['external_access'][1], stream=stream, trim_start=True, trim_end=True)
+        description = get_string_from_stream(begin=self.L5X_KWORDS['description'][0], end=self.L5X_KWORDS['description'][1], stream=stream, trim_start=True, trim_end=True)
 
-                # Split Children To Be Parsed Later
-                data_type.members = child_stream.split(';')
+        temp_member = DataTypeMember()
+        temp_member.name = name
+        temp_member.data_type = data_type
+        temp_member.dimension = dimension
+        temp_member.radix = radix
+        temp_member.hidden = hidden
+        temp_member.ext_access = ext_access
+        temp_member.description = description
 
-                return data_type
+        if not array_found:
+            return temp_member
 
-            case RockwellFileType.L5X:
-                # get name
-                data_type.name = get_string_from_stream(begin=self.L5X_KWORDS['name'][0],
-                                                                       end=self.L5X_KWORDS['name'][1], stream=stream,
-                                                                       trim_start=True, trim_end=True)
+        if array_found:
+            member_list = []
+            array_location = temp_member.data_type.find('[')
+            array_size = int(array_found)
+            for _ in range(array_size):
+                new_member = copy_instance(DataTypeMember(), temp_member)
+                new_member.name = f'{new_member.name}[{_}]'
+                new_member.data_type = new_member.data_type[:array_location]
+                member_list.append(new_member)
+            return member_list
 
-                # get family
-                data_type.family = get_string_from_stream(begin=self.L5X_KWORDS['family'][0],
-                                                                         end=self.L5X_KWORDS['family'][1], stream=stream,
-                                                                         trim_start=True, trim_end=True)
+    def __bind_members__(self, udt_list):
+        for udt in udt_list:
+            for member in udt.members:
+                if type(member) is list:  # if the member is an array...
+                    for x in member:
+                        self.__find_existing_data_type__(x, udt_list)
+                if type(member) is DataTypeMember:  # if the member is not an array...
+                    self.__find_existing_data_type__(member, udt_list)
+        return udt_list
 
-                # get udt class
-                data_type.udt_class = get_string_from_stream(begin=self.L5X_KWORDS['udt_class'][0],
-                                                                            end=self.L5X_KWORDS['udt_class'][1],
-                                                                            stream=stream,
-                                                                            trim_start=True, trim_end=True)
-                # get description
-                data_type.description = get_string_from_stream(begin=self.L5X_KWORDS['description'][0],
-                                                                              end=self.L5X_KWORDS['description'][1],
-                                                                              stream=stream, trim_start=True,
-                                                                              trim_end=True)
-
-                data_type.description.replace(self.L5X_KWORDS['description_header'][0], '')  # remove bogus header
-                data_type.description.replace(self.L5X_KWORDS['description_header'][1], '')  # remove bogus footer
-
-                # get members
-                # data_type.members = [self._get_data_type_members(member_stream) for member_stream in
-                #                      string_handler.get_list_from_stream(
-                #                          begin=KWORDS['member'][ATTR_BEGIN],
-                #                          end=KWORDS['member'][ATTR_END], stream=stream,
-                #                          trim_start=True, trim_end=True)]
-                return data_type
-
-    class DataType:
-        name = ''
-        family = ''
-        description = ''
-        udt_class = ''
-        members = []
+    def __find_existing_data_type__(self, member, user_data_type_list):
+        data_type = find('name', member.data_type, self._data_types)  # search pre defines
+        if data_type:
+            member.data_type = data_type
+            return
+        data_type = find('name', member.data_type, user_data_type_list)  # search run-time defines
+        if data_type:
+            member.data_type = data_type
+            return
+        print(f'No existing data type found for : {member}')
+        print(f'Member name : {member.name}')
+        print(f'Member data type : {member.data_type}')
 

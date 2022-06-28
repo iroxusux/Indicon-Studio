@@ -43,6 +43,7 @@ class BaseActivityWindow(QtWidgets.QWidget):
         self._queue_ref = queue_ref
         self.setWindowTitle(self.__class__.__name__)
         self.__setup_layout__()
+        self.__bind_connections__()
 
     @abstractmethod
     def __setup_layout__(self):
@@ -61,6 +62,10 @@ class BaseActivityWindow(QtWidgets.QWidget):
 
         # bind layout
         self.setLayout(self._layout)
+
+    @abstractmethod
+    def __bind_connections__(self):
+        pass
 
 
 class BaseActivity(object):

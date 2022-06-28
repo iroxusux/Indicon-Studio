@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Header> ### INDICON STUDIO PRE-DEFINED DATA TYPES IMPORT *** </Header>
+
+<DataTypes>
+
+### TIMER ###
+<DataType Name="TIMER" Family="NoFamily" Class="Predefined">
+<Members>
+<Member Name="PRE" DataType="DINT">
+</Member>
+<Member Name="ACC" DataType="DINT">
+</Member>
+<Member Name="EN" DataType="BOOL">
+</Member>
+<Member Name="TT" DataType="BOOL">
+</Member>
+<Member Name="DN" DataType="BOOL">
+</Member>
+</Members>
+</DataType>
+### /TIMER ###
+
+### COUNTER ###
+<DataType Name="COUNTER" Family="NoFamily" Class="Predefined">
+<Members>
+<Member Name="PRE" DataType="DINT">
+</Member>
+<Member Name="ACC" DataType="DINT">
+</Member>
+<Member Name="CU" DataType="BOOL">
+</Member>
+<Member Name="CD" DataType="BOOL">
+</Member>
+<Member Name="DN" DataType="BOOL">
+</Member>
+<Member Name="OV" DataType="BOOL">
+</Member>
+<Member Name="UN" DataType="BOOL">
+</Member>
+</Members>
+</DataType>
+### /COUNTER ###
+
+### MESSAGE ###
+<DataType Name="MESSAGE" Family="NoFamily" Class="Predefined">
+<Members>
+<Member Name="Falgs" DataType="INT">
+</Member>
+<Member Name="EW" DataType="BOOL">
+</Member>
+<Member Name="ER" DataType="BOOL">
+</Member>
+<Member Name="DN" DataType="BOOL">
+</Member>
+<Member Name="ST" DataType="BOOL">
+</Member>
+<Member Name="EN" DataType="BOOL">
+</Member>
+<Member Name="TO" DataType="BOOL">
+</Member>
+<Member Name="EN_CC" DataType="BOOL">
+</Member>
+<Member Name="ERR" DataType="INT">
+</Member>
+<Member Name="EXERR" DataType="DINT">
+</Member>
+<Member Name="ERR_SRC" DataType="DINT">
+</Member>
+<Member Name="DN_LEN" DataType="INT">
+</Member>
+<Member Name="REQ_LEN" DataType="INT">
+</Member>
+<Member Name="DestinationLink" DataType="INT">
+</Member>
+<Member Name="DestinationNode" DataType="INT">
+</Member>
+<Member Name="SourceLink" DataType="INT">
+</Member>
+<Member Name="Class" DataType="INT">
+</Member>
+<Member Name="Attribute" DataType="INT">
+</Member>
+<Member Name="Instance" DataType="DINT">
+</Member>
+<Member Name="LocalIndex" DataType="DINT">
+</Member>
+<Member Name="Channel" DataType="SINT">
+</Member>
+<Member Name="Rack" DataType="SINT">
+</Member>
+<Member Name="Group" DataType="SINT">
+</Member>
+<Member Name="Slot" DataType="SINT">
+</Member>
+<Member Name="Path" DataType="STRING">
+</Member>
+<Member Name="RemoteIndex" DataType="DINT">
+</Member>
+<Member Name="RemoteElement" DataType="STRING">
+</Member>
+<Member Name="UnconnectedTimeout" DataType="DINT">
+</Member>
+<Member Name="ConnectionRate" DataType="DINT">
+</Member>
+<Member Name="TimeoutMultiplier" DataType="SINT">
+</Member>
+</Members>
+</DataType>
+### /MESSAGE ###
+
+### STRING ###
+<DataType Name="STRING" Family="NoFamily" Class="Predefined">
+<Members>
+<Member Name="LEN" DataType="DINT">
+</Member>
+<Member Name="DATA" DataType="SINT[82]">
+</Member>
+</Members>
+</DataType>
+### /STRING ###
+
+### STRING_16 ###
+<DataType Name="STRING_16" Family="NoFamily" Class="Predefined">
+<Members>
+<Member Name="LEN" DataType="DINT">
+</Member>
+<Member Name="DATA" DataType="SINT[16]">
+</Member>
+</Members>
+</DataType>
+### /STRING ###
+
+### STRING_32 ###
+<DataType Name="STRING_32" Family="NoFamily" Class="Predefined">
+<Members>
+<Member Name="LEN" DataType="DINT">
+</Member>
+<Member Name="DATA" DataType="SINT[32]">
+</Member>
+</Members>
+</DataType>
+### /STRING_32 ###

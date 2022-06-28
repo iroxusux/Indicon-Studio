@@ -13,7 +13,7 @@ from threading import Thread
 ##################################################
 # Add-In Module Imports
 ##################################################
-from EngineeringTools.PowerCalculator import PowerCalculator
+from EngineeringTools.PowerCalculator.PowerCalculator import PowerCalculator
 from PyQt5 import QtWidgets, QtCore, QtGui
 ##################################################
 # Local Module Imports
@@ -31,7 +31,6 @@ STUDIO_VERSION = 'v1.00.00'
 
 # messages class to interface between GUI and "engine"
 class Messages(Enum):
-    IMPORT_L5K = 1
     IMPORT_L5X = 2
     CALC_CONFIG = 3
 
@@ -46,7 +45,8 @@ class StudioMainWindowForm(QtWidgets.QMainWindow):
         self._title = STUDIO_NAME  # window title
         self._version = STUDIO_VERSION  # studio version
         self._queue = queue_ref  # engine interface queue
-        self._file_handler = FileHandler()  # file handler - allows thread safe execution from engine threads (in trial)
+        self._file_handler = FileHandler()  # file handler - allows thread safe execution from engine threads
+        self._built_interface = None
 
         # set up UI
         self.__setup_ui__()
@@ -89,14 +89,10 @@ class StudioMainWindowForm(QtWidgets.QMainWindow):
         # # # FUNCTIONS # # #
         # sub functions menu AB CONTROLS
         ab_controls = self._tools_menu.addMenu("&AB Controls")
-        # l5k import
-        import_l5k_action = QtWidgets.QAction("Import L5K", parent=ab_controls)
-        import_l5k_action.triggered.connect(lambda: self._queue.put(Messages.IMPORT_L5K))
         # l5x import
         import_l5x_action = QtWidgets.QAction("Import L5X", parent=ab_controls)
         import_l5x_action.triggered.connect(lambda: self._queue.put(Messages.IMPORT_L5X))
         # final hooks
-        ab_controls.addAction(import_l5k_action)
         ab_controls.addAction(import_l5x_action)
 
         # sub functions menu GM CONTROLS
@@ -188,13 +184,20 @@ class StudioMainWindowForm(QtWidgets.QMainWindow):
     #     contextMenu = QMenu(self)
 
     def open_file(self, get_env, file_type_args):
-        self._file_handler.open_file(get_env, file_type_args)
+        return self._file_handler.open_file(get_env, file_type_args)
 
     def open_folder(self, get_env):
-        self._file_handler.open_folder(get_env)
+        return self._file_handler.open_folder(get_env)
+
+    def save_file(self, get_env):
+        return self._file_handler.save_file(get_env)
 
     def insert_interface_to_stack(self, interface, queue_ref):
-        self.add_activity_to_stack.emit(interface, queue_ref)
+        self._built_interface = None  # clear the built interface buffer
+        self.add_activity_to_stack.emit(interface, queue_ref)  # emit the interface to build
+        while not self._built_interface:  # wait for interface to be built
+            continue
+        return self._built_interface  # return the built interface !
 
     def __insert_interface_to_stack__(self, interface, queue_ref):
         built_interface = interface(queue_ref)  # create the object in this thread
@@ -204,6 +207,7 @@ class StudioMainWindowForm(QtWidgets.QMainWindow):
         new_view_action = QtWidgets.QAction(built_interface.windowTitle(), parent=self._view_menu)
         new_view_action.triggered.connect(lambda: self.__set_current_view__(built_interface))
         self._view_menu.addAction(new_view_action)
+        self._built_interface = built_interface
 
     def remove_interface_from_stack(self, interface):
         self.remove_activity_from_stack.emit(interface)
@@ -223,6 +227,7 @@ class StudioMainWindowForm(QtWidgets.QMainWindow):
 class FileHandler(QtCore.QObject):  # pseudo context manager - allows separate threads to interface with our main thread safely (to get contextual GUI stuff, like use windows explorer to open files / folders)
     open_file_req = QtCore.pyqtSignal(str, str)
     open_folder_req = QtCore.pyqtSignal(str)
+    save_file_req = QtCore.pyqtSignal(str)
     file_opened = QtCore.pyqtSignal(str)
     folder_opened = QtCore.pyqtSignal(str)
 
@@ -232,6 +237,7 @@ class FileHandler(QtCore.QObject):  # pseudo context manager - allows separate t
         self._folder_path = None
         self.open_file_req.connect(self.__open_file__)
         self.open_folder_req.connect(self.__open_folder__)
+        self.save_file_req.connect(self.__save_file__)
 
     def open_file(self, get_env, file_type_args):
         self._file_path = None  # clear out memory before attempting to loop
@@ -239,7 +245,15 @@ class FileHandler(QtCore.QObject):  # pseudo context manager - allows separate t
         while True:
             if not self._file_path:
                 continue
-            return self._file_path if self._file_path[0] else None
+            return self._file_path[0] if self._file_path[0] else None
+
+    def save_file(self, get_env):
+        self._file_path = None  # clear out memory before attempting to loop
+        self.save_file_req.emit(get_env)
+        while True:
+            if not self._file_path:
+                continue
+            return self._file_path[0] if self._file_path[0] else None
 
     def open_folder(self, get_env):
         self._folder_path = None  # clear out memory before attempting to loop
@@ -251,6 +265,9 @@ class FileHandler(QtCore.QObject):  # pseudo context manager - allows separate t
 
     def __open_file__(self, get_env, file_type_args):
         self._file_path = QtWidgets.QFileDialog.getOpenFileName(None, "Open File", os.getenv(get_env), file_type_args)
+
+    def __save_file__(self, get_env):
+        self._file_path = QtWidgets.QFileDialog.getSaveFileName(None, "Save File", get_env)
 
     def __open_folder__(self, get_env):
         self._folder_path = QtWidgets.QFileDialog.getExistingDirectory(None, 'Open Directory', os.getenv(get_env))
@@ -286,11 +303,6 @@ class IndiconStudio(object):
                 message = _queue.get(timeout=0.1)
                 match message:
 
-                    case Messages.IMPORT_L5K:  # import an L5K into a logical processor
-                        activity = self.__generic_activity_launch__(_window, RockwellProcessor)
-                        activity.queue_ref.put(RockwellMessages.IMPORT_L5K)  # cast our command to our new object
-                        self._activities.append(activity)  # create and append to memory stack (protect from garbage collection)
-
                     case Messages.IMPORT_L5X:  # import an L5X into a logical processor
                         activity = self.__generic_activity_launch__(_window, RockwellProcessor)
                         activity.queue_ref.put(RockwellMessages.IMPORT_L5X)  # cast our command to our new object
@@ -306,8 +318,8 @@ class IndiconStudio(object):
     @staticmethod
     def __generic_activity_launch__(_window, activity):
         g, q = activity.gui_class, queue.Queue()
-        _window.insert_interface_to_stack(g, q)
-        return activity(g, q)
+        bg = _window.insert_interface_to_stack(g, q)
+        return activity(bg, q)
 
 
 # exit program
