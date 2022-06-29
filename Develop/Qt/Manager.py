@@ -21,10 +21,15 @@ from PyQt5.QtWidgets import QWidget, QMainWindow, QApplication
 ##################################################
 # Global Variable Definitions
 ##################################################
+main_app = None
 
 
 def get_main_window() -> QWidget or None:
-    for widget in QApplication.instance().topLevelWidgets():
+    global main_app  # grab global var
+    if main_app:  # if we did this function before, return the already top level widget
+        return main_app
+    for widget in QApplication.instance().topLevelWidgets():  # else, filter through widgets to find it
         if isinstance(widget, QMainWindow):
-            return widget
+            main_app = widget  # set the global as the main (reserve this memory for faster functionality)
+            return main_app
     return None
