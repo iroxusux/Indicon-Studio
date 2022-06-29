@@ -19,6 +19,7 @@ from openpyxl.utils import column_index_from_string
 from PyQt5 import QtWidgets, QtCore
 from Qt.UiFunctions.open import get_file_with_dialogue
 from Qt.UiFunctions.save import save_file_with_dialogue
+from Qt.UiFunctions.status_bar import set_status_bar
 ##################################################
 # Local Module Imports
 ##################################################
@@ -119,6 +120,8 @@ class PowerCalculator(BaseActivity):
                 self.__save_calc_upload_to_xml__(some_path)
 
     def __load_calc_from_excel__(self):
+        # set status bar with new text
+        set_status_bar("Loading/Parsing Calculator File")
         # set local variables
         constHeader = 0
         constFooter = 1
@@ -247,9 +250,10 @@ class PowerCalculator(BaseActivity):
         self.__compile_to_xml__()
         self.gui_ref.update_browser_text(self._xml_stream)
         self.gui_ref.set_save_enable_button_state(True)
-        print('waiting...')
+        set_status_bar("Loading/Parsing Calculator File - Complete")
 
     def __save_calc_upload_to_xml__(self, save_path):
+        set_status_bar("Saving...")
         if not self._xml_stream:  # we can't save something we don't have KNOW'M'SAYIN?
             return
         save_path_split = save_path.split('.')
@@ -258,8 +262,10 @@ class PowerCalculator(BaseActivity):
         # save this XML with the given save path
         with open(save_path, 'w') as f:
             f.write(self._xml_stream)
+        set_status_bar("Save Complete")
 
     def __compile_to_xml__(self):
+        set_status_bar("Compiling XML File From Calculator")
         root = Element('Root')  # root of XML tree
         comment = Comment('Indicon Corporation Compiled Power Distribution Panel XML Generated File')  # root comment
         root.append(comment)

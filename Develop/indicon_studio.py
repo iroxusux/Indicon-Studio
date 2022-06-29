@@ -38,6 +38,7 @@ class Messages(Enum):
 class StudioMainWindowForm(QtWidgets.QMainWindow):
     add_activity_to_stack = QtCore.pyqtSignal(type(QtWidgets.QWidget), queue.Queue)  # add new activity to local stack
     remove_activity_from_stack = QtCore.pyqtSignal(QtWidgets.QWidget)  # remove activity from local stack
+    _set_status_bar_text = QtCore.pyqtSignal(str)
 
     def __init__(self, queue_ref: [queue.Queue]):
         super().__init__()
@@ -51,10 +52,6 @@ class StudioMainWindowForm(QtWidgets.QMainWindow):
         # set up UI
         self.__setup_ui__()
         self.__bind_connections__()
-        # self.__setup_layout__()
-        # self.__setup_connections__()
-        # self.__setup_action_bar_slots__()
-        # self.__setup_dock_slots__()
 
     def __setup_ui__(self):
         # # # WINDOW GENERICS # # #
@@ -86,7 +83,7 @@ class StudioMainWindowForm(QtWidgets.QMainWindow):
         self._file_menu.addAction(exit_action)
         # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-        # # # FUNCTIONS # # #
+        # # # TOOLS # # #
         # sub functions menu AB CONTROLS
         ab_controls = self._tools_menu.addMenu("&AB Controls")
         # l5x import
@@ -98,19 +95,10 @@ class StudioMainWindowForm(QtWidgets.QMainWindow):
         # sub functions menu GM CONTROLS
         functions_menu_gm_controls = self._tools_menu.addMenu("&GM Controls")
         # GM Eplan and logix creator tools
-        calc_config_action = QtWidgets.QAction("Config Calculator", parent=functions_menu_gm_controls)
+        calc_config_action = QtWidgets.QAction("Extract PDP Calculator", parent=functions_menu_gm_controls)
         calc_config_action.triggered.connect(lambda: self._queue.put(Messages.CALC_CONFIG))
-        calc_to_eplan_action = QtWidgets.QAction("Calc2EPlan", parent=functions_menu_gm_controls)
-        calc_to_eplan_action.triggered.connect(self.__debug_method__)
-        calc_to_logix_action = QtWidgets.QAction("Calc2Logix", parent=functions_menu_gm_controls)
-        calc_to_logix_action.triggered.connect(self.__debug_method__)
-        calc_full_build_action = QtWidgets.QAction("Calc Full Build", parent=functions_menu_gm_controls)
-        calc_full_build_action.triggered.connect(self.__debug_method__)
         # final hooks
         functions_menu_gm_controls.addAction(calc_config_action)
-        functions_menu_gm_controls.addAction(calc_to_eplan_action)
-        functions_menu_gm_controls.addAction(calc_to_logix_action)
-        functions_menu_gm_controls.addAction(calc_full_build_action)
 
         # sub functions menu FILE EXPLORER
         functions_menu_file_explorer = self._tools_menu.addMenu("&File Explorer")
@@ -120,13 +108,26 @@ class StudioMainWindowForm(QtWidgets.QMainWindow):
         # final hooks
         functions_menu_file_explorer.addAction(file_content_hints_action)
 
+        # # # HELP # # #
+        # about
+        about_action = QtWidgets.QAction("&About", parent=self._help_menu)
+        about_action.triggered.connect(self.__show_about__)
+        self._help_menu.addAction(about_action)
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
         self.setMenuBar(self._menu_bar)  # set menu bar as menu bar to self
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+        # # # STATUS BAR # # #
+        self._status_bar = QtWidgets.QStatusBar(self)
+        self.setStatusBar(self._status_bar)
         # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
     # setup slot - signal connections
     def __bind_connections__(self):
         self.add_activity_to_stack.connect(self.__insert_interface_to_stack__)
         self.remove_activity_from_stack.connect(self.__remove_interface_from_stack__)
+        self._set_status_bar_text.connect(self.__set_status_bar_text__)
 
     # def __setup_layout__(self):
     #     # Create Dock
@@ -219,9 +220,86 @@ class StudioMainWindowForm(QtWidgets.QMainWindow):
     def __set_current_view__(self, interface):
         self._central_widget.setCurrentWidget(interface)
 
+    def set_status_bar_text(self, text: str):
+        self._set_status_bar_text.emit(text)
+
+    def __set_status_bar_text__(self, text: str):
+        self._status_bar.showMessage(text, 10_000)
+
+    def __show_about__(self):
+        # create widget
+        self._about_widget = AboutWindow()
+        self._about_widget.show()
+
     @staticmethod
     def __debug_method__():
         print('Whatever you did worked... Good job.')
+
+
+class AboutWindow(QtWidgets.QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        # window properties
+        self._width = 500
+        self._height = 500
+        self.setFixedSize(self._width, self._height)
+        self.setWindowIcon(QtGui.QIcon('images/_default.png'))
+        self.setWindowTitle("Indicon Studio - About")
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowMinMaxButtonsHint & ~QtCore.Qt.WindowMinimizeButtonHint)
+
+        # window background
+        bg = QtWidgets.QLabel(self)
+        bg.setPixmap(QtGui.QPixmap('images/_about.png'))
+        bg.resize(self.size())
+
+        # layouts
+        # header horizontal
+        header_h_lay = QtWidgets.QHBoxLayout()
+        header_h_lay.setSpacing(5)
+        header_h_lay.setContentsMargins(5, 5, 5, 5)
+
+        # footer horizontal
+        footer_h_lay = QtWidgets.QHBoxLayout()
+        footer_h_lay.setSpacing(5)
+        footer_h_lay.setContentsMargins(5, 5, 5, 5)
+
+        # header vertical
+        v_lay = QtWidgets.QVBoxLayout()
+        v_lay.setSpacing(5)
+        v_lay.setContentsMargins(5, 5, 5, 5)
+
+        # indicon studio icon
+        ind_icon = QtWidgets.QLabel()
+        ind_icon.resize(50, 50)
+        ind_icon.setPixmap(QtGui.QPixmap('images/_default.png').scaled(50, 50, QtCore.Qt.KeepAspectRatio))
+
+        # indicon studio header text
+        header_label = QtWidgets.QLabel(f'{STUDIO_NAME} - {STUDIO_VERSION}')
+        header_label.setFont(QtGui.QFont("Times", weight=QtGui.QFont.Bold))
+
+        # about text browser
+        about_text = QtWidgets.QTextBrowser()
+
+        about_text.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
+        with open('..\README.md', 'r') as f:
+            about_text.setMarkdown(f.read())
+
+        # ok ( or "close" ) push button
+        ok_push_button = QtWidgets.QPushButton("Ok")
+        ok_push_button.clicked.connect(lambda: self.close())
+
+        # add widgets to horizontal header
+        header_h_lay.addWidget(ind_icon)
+        header_h_lay.addWidget(about_text)
+
+        # add widgets to horizontal footer
+        footer_h_lay.addWidget(ok_push_button)
+
+        # add h header to v header
+        v_lay.addLayout(header_h_lay)
+        v_lay.addLayout(footer_h_lay)
+
+        self.setLayout(v_lay)
 
 
 class FileHandler(QtCore.QObject):  # pseudo context manager - allows separate threads to interface with our main thread safely (to get contextual GUI stuff, like use windows explorer to open files / folders)

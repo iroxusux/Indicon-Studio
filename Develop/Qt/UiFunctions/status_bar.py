@@ -1,5 +1,5 @@
 ##################################################
-# Program: open
+# Program: status_bar.py
 ##################################################
 
 ##################################################
@@ -23,15 +23,8 @@ import Qt.Manager as manager
 ##################################################
 
 
-def get_file_with_dialogue(get_env='HOME', file_type_args='.*(*.*)') -> str | None:
+def set_status_bar(text: str):  # set status bar of main window
     app = manager.get_main_window()
     if app is None:
         return
-    return app.open_file(get_env, file_type_args)
-
-
-def get_folder_with_dialogue(get_env='Home') -> str | None:
-    app = manager.get_main_window()
-    if app is None:
-        return
-    return app.open_folder(get_env)
+    app.set_status_bar_text(text)
