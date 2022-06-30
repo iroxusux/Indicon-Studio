@@ -7,7 +7,7 @@
 ##################################################
 from enum import Enum
 import queue
-from xml.etree.ElementTree import Element, SubElement, Comment, ElementTree
+from xml.etree.ElementTree import Element, SubElement, Comment, ElementTree, tostring
 ##################################################
 # Add-In Module Imports
 ##################################################
@@ -267,45 +267,31 @@ class PowerCalculator(BaseActivity):
     def __compile_to_xml__(self):
         set_status_bar("Compiling XML File From Calculator")
         root = Element('Root')  # root of XML tree
+        root.set('version', '1.0')
         comment = Comment('Indicon Corporation Compiled Power Distribution Panel XML Generated File')  # root comment
         root.append(comment)
 
-        # system name
-        system_name = SubElement(root, 'SystemName')
-        system_name.text = f"SystemName='{self._system_name}'"
-
-        # panel name
-        panel_name = SubElement(root, "PanelName")
-        panel_name.text = f"PanelName='{self._panel_name}'"
-
-        # max panel amps
-        max_amps = SubElement(root, "MaxAmps")
-        max_amps.text = f"MaxAmps='{self._max_amps}'"
-
-        # current amps
-        current_amps = SubElement(root, "CurrentAmps")
-        current_amps.text = f"CurrentAmps='{self._current_amps}'"
+        # panel info
+        panel_info = SubElement(root, 'PanelInfo', {'SystemName': self._system_name,
+                                                    'PanelName': self._panel_name,
+                                                    'MaxPanelAmps': self._max_amps.__str__(),
+                                                    'CurrentPanelAmps': self._current_amps.__str__()})
 
         # 480 breakers
         c480_breakers = SubElement(root, "c480Breakers")
         for breaker in self._vac480_breakers:
-            new_breaker = SubElement(c480_breakers, "c480Breaker")
-            new_breaker.text = f"Name='{breaker.name}' Size='{breaker.breaker_size}' Amps='{breaker.current_amps}'"
+            new_breaker = SubElement(c480_breakers, "c480Breaker", {'Name': breaker.name, 'Size': breaker.breaker_size.__str__(), 'Amps': breaker.current_amps.__str__()})
             for child in breaker.children_devices:
-                new_child_device = SubElement(new_breaker, "Child_Device")
-                new_child_device.text = f"Name='{child.name}' AmpDraw='{child.amp_draw}'"
+                new_child_device = SubElement(new_breaker, "Child_Device", {'Name': child.name, 'Amps': child.amp_draw.__str__()})
 
         # 120 transformers
         c120_xformers = SubElement(root, "c120Transformers")
         for xformer in self._vac120_xfmrs:
-            new_xformer = SubElement(c120_xformers, "c120Transformer")
-            new_xformer.text = f"Name='{xformer.name}' Amps='{xformer.current_amps}'"
+            new_xformer = SubElement(c120_xformers, "c120Transformer", {'Name': xformer.name, 'Amps': xformer.current_amps.__str__()})
             for child in xformer.children_devices:
-                new_child_device = SubElement(new_xformer, "c120Breaker")
-                new_child_device.text = f"Name='{child.name}' Amps='{child.current_amps}'"
+                new_child_device = SubElement(new_xformer, "c120Breaker", {'Name': child.name, 'Amps': child.current_amps.__str__()})
                 for device in child.children_devices:
-                    new_device = SubElement(new_child_device, "Child_Device")
-                    new_device.text = f"Name='{child.name}' AmpDraw='{child.amp_draw}'"
+                    new_device = SubElement(new_child_device, "Child_Device", {'Name': device.name, 'Amps': device.amp_draw.__str__()})
 
         self._xml_stream = prettify(root)
 

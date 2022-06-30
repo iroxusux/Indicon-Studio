@@ -1,0 +1,62 @@
+<?xml version="1.0" ?>
+<Root version="1.0">
+  <!--Indicon Corporation Compiled Power Distribution Panel XML Generated File-->
+  <PanelInfo SystemName="None" PanelName="*PDP Number*" MaxPanelAmps="100" CurrentPanelAmps="73"/>
+  <c480Breakers>
+    <c480Breaker Name="E152CB" Size="15 / 30" Amps="22">
+      <Child_Device Name="AAyyM1" Amps="10"/>
+      <Child_Device Name="AAyyM2" Amps="12"/>
+    </c480Breaker>
+    <c480Breaker Name="E158CB" Size="15 / 30" Amps="26">
+      <Child_Device Name="AAxxM1" Amps="10"/>
+      <Child_Device Name="AAxxM2" Amps="12"/>
+      <Child_Device Name="AAxxM3" Amps="4"/>
+    </c480Breaker>
+    <c480Breaker Name="E164CB" Size="15 / 30" Amps="25">
+      <Child_Device Name="AAzzM1" Amps="5"/>
+      <Child_Device Name="AAzzM2" Amps="5"/>
+      <Child_Device Name="AAxxM3" Amps="5"/>
+      <Child_Device Name="AAzzM4" Amps="5"/>
+      <Child_Device Name="AAzzM5" Amps="5"/>
+    </c480Breaker>
+    <c480Breaker Name="E170CB" Size="15 / 30" Amps="0"/>
+    <c480Breaker Name="E176CB" Size="15 / 30" Amps="0"/>
+    <c480Breaker Name="E182CB" Size="15 / 30" Amps="0"/>
+    <c480Breaker Name="E202CB" Size="15 / 30" Amps="0"/>
+    <c480Breaker Name="E208CB" Size="15 / 30" Amps="0"/>
+    <c480Breaker Name="E214CB" Size="15 / 30" Amps="0"/>
+    <c480Breaker Name="E352CB" Size="60" Amps="0"/>
+    <c480Breaker Name="E358CB" Size="60" Amps="0"/>
+  </c480Breakers>
+  <c120Transformers>
+    <c120Transformer Name="E500T" Amps="28">
+      <c120Breaker Name="E552CB" Amps="8">
+        <Child_Device Name="AAyyPS1" Amps="2"/>
+        <Child_Device Name="AAyyPS2" Amps="2"/>
+        <Child_Device Name="AAyyPS3" Amps="2"/>
+        <Child_Device Name="AAyyPS4" Amps="2"/>
+      </c120Breaker>
+      <c120Breaker Name="E556CB" Amps="10">
+        <Child_Device Name="AAxxPS1" Amps="2"/>
+        <Child_Device Name="AAxxPS2" Amps="2"/>
+        <Child_Device Name="AAxxPS3" Amps="2"/>
+        <Child_Device Name="AAxxPS4" Amps="2"/>
+        <Child_Device Name="AAxxPS5" Amps="2"/>
+      </c120Breaker>
+      <c120Breaker Name="E560CB" Amps="10">
+        <Child_Device Name="AAzzPS1" Amps="2"/>
+        <Child_Device Name="AAzzPS2" Amps="2"/>
+        <Child_Device Name="AAzzPS3" Amps="2"/>
+        <Child_Device Name="AAzzPS4" Amps="2"/>
+        <Child_Device Name="AAzzPS5" Amps="2"/>
+      </c120Breaker>
+      <c120Breaker Name="E564CB" Amps="0"/>
+    </c120Transformer>
+    <c120Transformer Name="E400T" Amps="0">
+      <c120Breaker Name="E452CB" Amps="0"/>
+      <c120Breaker Name="E456CB" Amps="0"/>
+      <c120Breaker Name="E460CB" Amps="0"/>
+      <c120Breaker Name="E464CB" Amps="0"/>
+    </c120Transformer>
+  </c120Transformers>
+</Root>
